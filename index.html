@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel to JSON</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+        integrity="sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062MaV8sfjQKYVGjOBaZBOA87z+IhZE9DA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+        integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <style>
+        #jsonData {
+            text-wrap: wrap;
+        }
+
+        .textEditBox {
+            position:fixed;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            border: 0px solid black;
+            width: max-content;
+        }
+
+        .hide {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid my-3">
+        <div class="input-group mb-3">
+            <input class="form-control" type="file" name="fileGetter" id="input" accept=".xls,.xlsx">
+            <select name="sheetName" id="sheetId" class="dropdown btn btn-success dropdown-toggle text-light">
+                <option value="" class="dropdown-menu">Select any</option>
+            </select>
+            <button class="btn btn-outline-success" id="convertor" type="submit">Convert</button>
+            <button class="btn btn-outline-success" id="download" type="submit">Download</button>
+        </div>
+
+        <div class="textEditBox" id="editTool">
+            <button class="btn btn-outline-success" id="editH1">h1</button>
+            <button class="btn btn-outline-success" id="editH2">h2</button>
+            <button class="btn btn-outline-success" id="editH3">h3</button>
+            <button class="btn btn-outline-success" id="removeClasses"> <> </button>
+        </div>
+        <div id="jsonData" class="container-xl"></div>
+    </div>
+
+    <script>
+        let selectedFile;
+        var mappedPara, mappedDiv;
+        var constArray= []
+        var arrayOfElements = [];
+        var targetGetter;
+        var whos = document.getElementById('sheetId');
+        function removePrev(){
+            if (document.getElementById('textWrap')) {
+                document.getElementById('textWrap').remove();
+            }
+        }
+        whos.addEventListener('change', removePrev)
+            
+        let fileReader = new FileReader();
+        // console.log(window.XLSX)
+        document.getElementById('input').addEventListener('change', (event) => {
+            selectedFile = event.target.files[0];
+            fileReader.readAsBinaryString(selectedFile);
+            fileReader.onload = (event) => {
+                let data = event.target.result;
+                let workbook = XLSX.read(data, { type: "binary" });
+                workbook.SheetNames.forEach((element, index) => {
+                    var options = document.createElement('option')
+                    options.setAttribute('class', ' dropdown-item text-light')
+                    options.setAttribute('value', index)
+                    options.innerHTML = element
+                    whos.append(options)
+                });
+            }
+        })
+        function isUrl(text) {
+            try {
+                new URL(text);
+                mappedPara = document.createElement('a')
+                mappedPara.setAttribute('href', text);
+                mappedPara.setAttribute('target', '_blank')
+            } catch (error) {
+                mappedPara = document.createElement("pre");
+                mappedPara.setAttribute('class', 'text-wrap')
+                mappedPara.setAttribute('contenteditable', true)
+            }
+        }
+        function editToolFunc() {
+            document.getElementById('editTool').classList.toggle('hide')
+        }
+        function editTextFunc() {
+            document.getElementById('editH1').addEventListener('click',()=>{
+                document.getElementById(targetGetter).className = 'text-wrap';
+                document.getElementById(targetGetter).classList.add('h1');
+            })
+            document.getElementById('editH2').addEventListener('click',()=>{
+                document.getElementById(targetGetter).className = 'text-wrap';
+                document.getElementById(targetGetter).classList.add('h2');
+            })
+            document.getElementById('editH3').addEventListener('click',()=>{
+                document.getElementById(targetGetter).className = 'text-wrap';
+                document.getElementById(targetGetter).classList.add('h3');
+            })
+            document.getElementById('removeClasses').addEventListener('click',()=>{
+                document.getElementById(targetGetter).className = 'text-wrap';
+            })
+        }
+       
+        document.getElementById("convertor").addEventListener('click', (event) => {
+            if (selectedFile) {
+                removePrev()
+                fileReader.readAsBinaryString(selectedFile);
+                fileReader.onload = (event) => {
+                    let data = event.target.result;
+                    let workbook = XLSX.read(data, { type: "binary" });
+                    // console.log('workbook: ', workbook)
+                    let rowObject = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[workbook.SheetNames[whos.value]])
+                    // console.log(typeof rowObject)
+
+                    var totalRows = Object.keys(rowObject).length;
+                    var totalKeys = Object.keys(rowObject[0]).length;
+                    // console.log(totalKeys)
+                    for (let i = 0; i < totalRows; i++) {
+                        for (let j = 0; j < totalKeys; j++) {
+                            if (Object.values(rowObject[i])[j] != undefined){
+                                constArray.push(Object.values(rowObject[i])[j]);
+                            }
+                        }
+                    }
+                    mappedDiv = document.createElement('div');
+                    mappedDiv.setAttribute('id', 'textWrap');
+                    mappedDiv.setAttribute('class', 'wrapper px-5 py-5');
+                    constArray.map((element, index) => {
+                        isUrl(element)
+                        mappedPara.innerHTML = element;
+                        arrayOfElements.push(mappedPara)
+                        mappedDiv.append(mappedPara);
+                        document.getElementById('jsonData').append(mappedDiv);
+                    })
+                    document.querySelectorAll('.text-wrap').forEach((item,index) => {
+                        item.addEventListener('click', (event)=>{
+                            item.setAttribute('id','text'+index)
+                            targetGetter = event.target.id;
+                            editTextFunc()
+                        })
+                    })
+                }
+            }
+        });
+
+        document.getElementById('download').addEventListener('click', () => {
+            var htmlContent = document.getElementById('jsonData').innerHTML;
+            html2pdf().from(htmlContent).save('converted.pdf');
+        });
+    </script>
+</body>
+
+</html>
